@@ -9,14 +9,17 @@ use mongodb_gridfs::{GridFSBucket, GridFSError};
 
 use crate::error::Result;
 
+/// Extend file operation-related methods to GridFSBucket.
 #[async_trait]
 pub trait FileSync {
+    /// Download file with `filename` from the cloud to `local_path`.
     async fn download_to(
         &self,
         filename: &str,
         local_path: impl AsRef<Path> + Send + Sync,
     ) -> Result<ObjectId>;
 
+    /// Upload file at `local_path` to the cloud with `filename`.
     async fn upload_from(
         &mut self,
         filename: &str,

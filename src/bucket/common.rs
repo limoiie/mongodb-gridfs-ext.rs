@@ -7,11 +7,19 @@ use mongodb_gridfs::{GridFSBucket, GridFSError};
 
 use crate::error::Result;
 
+/// Extend common helper methods to [mongodb_gridfs::GridFSBucket].
 #[async_trait]
 pub trait GridFSBucketExt {
+    /// Get doc id by `filename`.
     async fn id(&self, filename: &str) -> Result<ObjectId>;
+
+    /// Read cloud file by id as [alloc::String].
     async fn read_as_string(&self, id: ObjectId) -> Result<String>;
+
+    /// Read cloud file by id as [alloc::Vec<u8>].
     async fn read_as_bytes(&self, id: ObjectId) -> Result<Vec<u8>>;
+
+    /// Return true if there is a file on the cloud with `filename`.
     async fn exists(&self, filename: &str) -> Result<bool>;
 }
 
