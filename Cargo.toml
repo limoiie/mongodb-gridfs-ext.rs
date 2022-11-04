@@ -13,7 +13,7 @@ mongodb-gridfs = "0.2.2"
 tokio = { version = "1.2.1", features = ["full"] }
 
 [dev-dependencies]
-chain_ext = { path = "../chain_ext" }
+chain_ext = { git = "https://github.com/limoiie/chain-ext.rs", version = "0.1.0" }
 fake = "2.5.0"
 tempfile = "3.3.0"
-test-utilities = { path = "../test-utilities" }
+test-utilities = { git = "https://github.com/limoiie/test-utilities.rs", version = "0.1.0" }
