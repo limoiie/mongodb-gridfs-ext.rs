@@ -13,13 +13,13 @@ use crate::error::Result;
 pub trait FileSync {
     async fn download_to(
         &self,
-        uri: &str,
+        filename: &str,
         local_path: impl AsRef<Path> + Send + Sync,
     ) -> Result<ObjectId>;
 
     async fn upload_from(
         &mut self,
-        uri: &str,
+        filename: &str,
         local_path: impl AsRef<Path> + Send,
     ) -> Result<ObjectId>;
 }
@@ -28,11 +28,11 @@ pub trait FileSync {
 impl FileSync for GridFSBucket {
     async fn download_to(
         &self,
-        uri: &str,
+        filename: &str,
         local_path: impl AsRef<Path> + Send + Sync,
     ) -> Result<ObjectId> {
         let opt = GridFSFindOptions::default();
-        let mut cursor = self.find(doc! {"filename": uri}, opt).await?;
+        let mut cursor = self.find(doc! {"filename": filename}, opt).await?;
         let doc = cursor.next().await.ok_or(GridFSError::FileNotFound())??;
         let oid = doc.get_object_id("_id").unwrap();
 
@@ -45,12 +45,12 @@ impl FileSync for GridFSBucket {
 
     async fn upload_from(
         &mut self,
-        uri: &str,
+        filename: &str,
         local_path: impl AsRef<Path> + Send,
     ) -> Result<ObjectId> {
         let file = tokio::fs::File::open(local_path).await?.into_std().await;
         let async_file = futures::io::AllowStdIo::new(file);
-        let oid = self.upload_from_stream(uri, async_file, None).await?;
+        let oid = self.upload_from_stream(filename, async_file, None).await?;
         Ok(oid)
     }
 }
