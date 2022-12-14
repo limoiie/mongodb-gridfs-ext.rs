@@ -11,32 +11,47 @@ use crate::error::Result;
 #[async_trait]
 pub trait GridFSBucketExt {
     /// Get doc id by `filename`.
-    async fn id(&self, filename: &str) -> Result<ObjectId>;
+    async fn id<S>(&self, filename: S) -> Result<ObjectId>
+    where
+        S: AsRef<str> + Send;
 
     /// Get doc filename by `id`.
     async fn filename(&self, id: ObjectId) -> Result<String>;
 
     /// Read cloud file by `id` as [alloc::String].
-    async fn read_string(&self, id: ObjectId) -> Result<String>;
+    async fn read_string<S>(&self, filename: S) -> Result<String>
+    where
+        S: AsRef<str> + Send;
 
     /// Read cloud file by `id` as [alloc::Vec<u8>].
-    async fn read_bytes(&self, id: ObjectId) -> Result<Vec<u8>>;
+    async fn read_bytes<S>(&self, filename: S) -> Result<Vec<u8>>
+    where
+        S: AsRef<str> + Send;
 
     /// Write [&str] into cloud file by `id`.
-    async fn write_string(&mut self, id: ObjectId, content: &str) -> Result<()>;
+    async fn write_string<S>(&mut self, filename: S, content: &str) -> Result<()>
+    where
+        S: AsRef<str> + Send + Sync;
 
     /// Write [&\[u8\]] into cloud file by `id`.
-    async fn write_bytes(&mut self, id: ObjectId, content: &[u8]) -> Result<()>;
+    async fn write_bytes<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        filename: S,
+        content: &[u8],
+    ) -> Result<()>;
 
     /// Return true if there is a file on the cloud with `filename`.
-    async fn exists(&self, filename: &str) -> Result<bool>;
+    async fn exists<S: AsRef<str> + Send>(&self, filename: S) -> Result<bool>;
 }
 
 #[async_trait]
 impl GridFSBucketExt for GridFSBucket {
-    async fn id(&self, filename: &str) -> Result<ObjectId> {
+    async fn id<S>(&self, filename: S) -> Result<ObjectId>
+    where
+        S: AsRef<str> + Send,
+    {
         let opt = GridFSFindOptions::default();
-        self.find(doc! {"filename": filename}, opt)
+        self.find(doc! {"filename": filename.as_ref()}, opt)
             .await?
             .next()
             .await
@@ -56,33 +71,48 @@ impl GridFSBucketExt for GridFSBucket {
             .map_err(Into::into)
     }
 
-    async fn read_string(&self, id: ObjectId) -> Result<String> {
-        self.read_bytes(id)
+    async fn read_string<S>(&self, filename: S) -> Result<String>
+    where
+        S: AsRef<str> + Send,
+    {
+        self.read_bytes(filename)
             .await
             .and_then(|bytes| std::io::read_to_string(bytes.as_slice()).map_err(|err| err.into()))
     }
 
-    async fn read_bytes(&self, id: ObjectId) -> Result<Vec<u8>> {
+    async fn read_bytes<S>(&self, filename: S) -> Result<Vec<u8>>
+    where
+        S: AsRef<str> + Send,
+    {
+        let id = self.id(filename).await?;
         let mut cursor = self.open_download_stream(id).await?;
         let buffer = cursor.next().await.ok_or(GridFSError::FileNotFound())?;
         Ok(buffer)
     }
 
-    async fn write_string(&mut self, id: ObjectId, content: &str) -> Result<()> {
-        self.write_bytes(id, content.as_bytes()).await
+    async fn write_string<S>(&mut self, filename: S, content: &str) -> Result<()>
+    where
+        S: AsRef<str> + Send + Sync,
+    {
+        self.write_bytes(filename, content.as_bytes()).await
     }
 
-    async fn write_bytes(&mut self, id: ObjectId, content: &[u8]) -> Result<()> {
-        let filename = self.filename(id).await?;
+    async fn write_bytes<S>(&mut self, filename: S, content: &[u8]) -> Result<()>
+    where
+        S: AsRef<str> + Send + Sync,
+    {
         let opt = GridFSUploadOptions::default();
-        self.upload_from_stream(filename.as_str(), content, Some(opt))
+        self.upload_from_stream(filename.as_ref(), content, Some(opt))
             .await?;
         Ok(())
     }
 
-    async fn exists(&self, filename: &str) -> Result<bool> {
+    async fn exists<S>(&self, filename: S) -> Result<bool>
+    where
+        S: AsRef<str> + Send,
+    {
         let opt = GridFSFindOptions::default();
-        let mut cursor = self.find(doc! {"filename": filename}, opt).await?;
+        let mut cursor = self.find(doc! {"filename": filename.as_ref()}, opt).await?;
         Ok(cursor.next().await.is_some())
     }
 }
@@ -151,11 +181,7 @@ mod tests {
 
         assert_eq!(
             file.content.unwrap().as_slice(),
-            bucket
-                .read_string(bucket.id(filename).await.unwrap())
-                .await
-                .unwrap()
-                .as_bytes()
+            bucket.read_string(filename).await.unwrap().as_bytes()
         );
     }
 
@@ -183,10 +209,7 @@ mod tests {
 
         assert_eq!(
             file.content.unwrap().as_slice(),
-            bucket
-                .read_bytes(bucket.id(filename).await.unwrap())
-                .await
-                .unwrap()
+            bucket.read_bytes(filename).await.unwrap()
         );
     }
 
