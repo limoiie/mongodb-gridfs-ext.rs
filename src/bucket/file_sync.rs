@@ -41,7 +41,7 @@ impl FileSync for GridFSBucket {
             println!("Failed to open download stream for {filename} {oid}")
         }
 
-        let buffer = buffer.unwrap();
+        let buffer = buffer?;
         tokio::fs::write(local_path, buffer).await?;
         Ok(oid)
     }
