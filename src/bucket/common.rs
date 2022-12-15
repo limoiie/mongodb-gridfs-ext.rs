@@ -86,7 +86,7 @@ impl GridFSBucketExt for GridFSBucket {
     {
         let id = self.id(filename).await?;
         let mut cursor = self.open_download_stream(id).await?;
-        let buffer = cursor.next().await.ok_or(GridFSError::FileNotFound())?;
+        let buffer = cursor.next().await.unwrap_or_default();
         Ok(buffer)
     }
 

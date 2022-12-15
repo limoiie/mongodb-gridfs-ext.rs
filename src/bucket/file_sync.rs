@@ -92,7 +92,7 @@ pub(crate) mod tests {
         let oid = bucket.upload_from(&link, temp_file.path).await.unwrap();
 
         let mut cursor = bucket.open_download_stream(oid).await.unwrap();
-        let buffer: Vec<u8> = cursor.next().await.unwrap();
+        let buffer: Vec<u8> = cursor.next().await.unwrap_or_default();
 
         assert_eq!(buffer.as_slice(), temp_file.content.unwrap());
     }
