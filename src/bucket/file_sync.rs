@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
-use mongodb_gridfs::{GridFSBucket, GridFSError};
+use mongodb_gridfs::GridFSBucket;
 
 use crate::bucket::common::GridFSBucketExt;
 use crate::error::Result;
@@ -36,12 +36,7 @@ impl FileSync for GridFSBucket {
     ) -> Result<ObjectId> {
         let oid = self.id(filename).await?;
         let mut cursor = self.open_download_stream(oid).await?;
-        let buffer = cursor.next().await.ok_or(GridFSError::FileNotFound());
-        if buffer.is_err() {
-            println!("Failed to open download stream for {filename} {oid}")
-        }
-
-        let buffer = buffer?;
+        let buffer = cursor.next().await.unwrap_or_default();
         tokio::fs::write(local_path, buffer).await?;
         Ok(oid)
     }
