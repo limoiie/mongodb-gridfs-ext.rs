@@ -3,9 +3,9 @@ use futures::StreamExt;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
 use mongodb_gridfs::options::{GridFSFindOptions, GridFSUploadOptions};
-use mongodb_gridfs::{GridFSBucket, GridFSError};
+use mongodb_gridfs::GridFSBucket;
 
-use crate::error::Result;
+use crate::error::{GridFSError, Result};
 
 /// Extend common helper methods to [GridFSBucket].
 #[async_trait]
@@ -55,7 +55,10 @@ impl GridFSBucketExt for GridFSBucket {
             .await?
             .next()
             .await
-            .ok_or(GridFSError::FileNotFound())?
+            .ok_or(GridFSError::FileNotFound {
+                filename: Some(filename.as_ref().to_string()),
+                id: None,
+            })?
             .map(|doc| doc.get_object_id("_id").unwrap())
             .map_err(Into::into)
     }
@@ -66,7 +69,10 @@ impl GridFSBucketExt for GridFSBucket {
             .await?
             .next()
             .await
-            .ok_or(GridFSError::FileNotFound())?
+            .ok_or(GridFSError::FileNotFound {
+                filename: None,
+                id: Some(id),
+            })?
             .map(|doc| doc.get_str("filename").unwrap().to_owned())
             .map_err(Into::into)
     }
@@ -152,7 +158,7 @@ mod tests {
 
         assert_eq!(file.id, bucket.id(filename).await.unwrap());
         match bucket.id("non-exist-filename.txt").await.unwrap_err() {
-            GridFSError(FileNotFound()) => (),
+            GridFSError(FileNotFound { .. }) => (),
             _ => assert!(false, "Should return error [GridFSError(FileNotFound())]"),
         }
     }

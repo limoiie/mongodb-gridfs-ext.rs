@@ -1,7 +1,30 @@
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+
+use mongodb::bson::oid::ObjectId;
+
 #[derive(Debug)]
 pub enum GridFSError {
-    FileNotFound(),
+    FileNotFound {
+        filename: Option<String>,
+        id: Option<ObjectId>,
+    },
 }
+
+impl Display for GridFSError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FileNotFound {
+                filename: Some(filename),
+                ..
+            } => write!(f, "FileNotFound(filename={})", filename),
+            Self::FileNotFound { id: Some(id), .. } => write!(f, "FileNotFound(id={})", id),
+            Self::FileNotFound { .. } => write!(f, "FileNotFound(None)"),
+        }
+    }
+}
+
+impl Error for GridFSError {}
 
 #[derive(Debug)]
 pub enum GridFSExtError {
@@ -9,6 +32,18 @@ pub enum GridFSExtError {
     GridFSError(GridFSError),
     IOError(std::io::Error),
 }
+
+impl Display for GridFSExtError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MongoError(err) => write!(f, "MongoError({})", err),
+            Self::GridFSError(err) => write!(f, "GridFSError({})", err),
+            Self::IOError(err) => write!(f, "IOError({})", err),
+        }
+    }
+}
+
+impl Error for GridFSExtError {}
 
 impl From<GridFSError> for GridFSExtError {
     fn from(err: GridFSError) -> Self {
@@ -20,7 +55,11 @@ impl From<mongodb_gridfs::GridFSError> for GridFSExtError {
     fn from(err: mongodb_gridfs::GridFSError) -> Self {
         match err {
             mongodb_gridfs::GridFSError::MongoError(err) => GridFSExtError::MongoError(err),
-            mongodb_gridfs::GridFSError::FileNotFound() => GridFSError::FileNotFound().into(),
+            mongodb_gridfs::GridFSError::FileNotFound() => GridFSError::FileNotFound {
+                filename: None,
+                id: None,
+            }
+            .into(),
         }
     }
 }
