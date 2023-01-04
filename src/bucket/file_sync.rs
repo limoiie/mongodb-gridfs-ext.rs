@@ -71,11 +71,11 @@ pub(crate) mod tests {
     #[tokio::test]
     async fn test_upload() {
         let mongo_handle = ContainerBuilder::new("mongo")
-            .port_mapping(0, Some(27017))
+            .bind_port_as_default(Some("0"), "27017")
             .build_disposable()
             .await;
 
-        let mongo_url = mongo_handle.url.as_ref().unwrap();
+        let mongo_url = mongo_handle.url();
 
         let faker = fs::TempFileFaker::new()
             .kind(fs::TempFileKind::Text)
@@ -100,10 +100,10 @@ pub(crate) mod tests {
     #[tokio::test]
     async fn test_download() {
         let mongo_handle = ContainerBuilder::new("mongo")
-            .port_mapping(0, Some(27017))
+            .bind_port_as_default(Some("0"), "27017")
             .build_disposable()
             .await;
-        let mongo_url = mongo_handle.url.as_ref().unwrap();
+        let mongo_url = mongo_handle.url();
         let bucket = Client::with_uri_str(mongo_url)
             .await
             .unwrap()

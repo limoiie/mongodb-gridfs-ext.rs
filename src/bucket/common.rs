@@ -140,12 +140,12 @@ mod tests {
         let filename = "some-filename.txt";
 
         let handle = docker::Builder::new("mongo")
-            .port_mapping(0, Some(27017))
+            .bind_port_as_default(Some("0"), "27017")
             .build_disposable()
             .await;
 
         let bucket = GridFSBucket::new(
-            Client::with_uri_str(handle.url.as_ref().unwrap())
+            Client::with_uri_str(handle.url())
                 .await
                 .unwrap()
                 .database("test_db"),
@@ -168,12 +168,12 @@ mod tests {
         let filename = "some-filename.txt";
 
         let handle = docker::Builder::new("mongo")
-            .port_mapping(0, Some(27017))
+            .bind_port_as_default(Some("0"), "27017")
             .build_disposable()
             .await;
 
         let bucket = GridFSBucket::new(
-            Client::with_uri_str(handle.url.as_ref().unwrap())
+            Client::with_uri_str(handle.url())
                 .await
                 .unwrap()
                 .database("test_db"),
@@ -196,12 +196,12 @@ mod tests {
         let filename = "some-filename.txt";
 
         let handle = docker::Builder::new("mongo")
-            .port_mapping(0, Some(27017))
+            .bind_port_as_default(Some("0"), "27017")
             .build_disposable()
             .await;
 
         let bucket = GridFSBucket::new(
-            Client::with_uri_str(handle.url.as_ref().unwrap())
+            Client::with_uri_str(handle.url())
                 .await
                 .unwrap()
                 .database("test_db"),
@@ -224,12 +224,12 @@ mod tests {
         let filename = "some-filename.txt";
 
         let handle = docker::Builder::new("mongo")
-            .port_mapping(0, Some(27017))
+            .bind_port_as_default(Some("0"), "27017")
             .build_disposable()
             .await;
 
         let bucket = GridFSBucket::new(
-            Client::with_uri_str(handle.url.as_ref().unwrap())
+            Client::with_uri_str(handle.url())
                 .await
                 .unwrap()
                 .database("test_db"),

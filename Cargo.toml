@@ -16,4 +16,4 @@ tokio = { version = "1.2.1", features = ["full"] }
 chain_ext = { git = "https://github.com/limoiie/chain-ext.rs", version = "0.1.0" }
 fake = "2.5.0"
 tempfile = "3.3.0"
-test-utilities = { git = "https://github.com/limoiie/test-utilities.rs", version = "0.1.0" }
+test-utilities = { git = "https://github.com/limoiie/test-utilities.rs", version = "0.1.1" }
