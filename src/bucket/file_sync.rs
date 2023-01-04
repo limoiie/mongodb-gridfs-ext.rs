@@ -137,4 +137,46 @@ pub(crate) mod tests {
             .unwrap();
         assert_eq!(temp_file.content.unwrap(), download_doc.into_bytes());
     }
+
+    #[tokio::test]
+    async fn test_download_big_file() {
+        let mongo_handle = ContainerBuilder::new("mongo")
+            .bind_port_as_default(Some("0"), "27017")
+            .build_disposable()
+            .await;
+        let mongo_url = mongo_handle.url();
+        let bucket = Client::with_uri_str(mongo_url)
+            .await
+            .unwrap()
+            .database("testdb")
+            .clone()
+            .bucket(None);
+
+        let link: String = FileName().fake();
+        let faker = gridfs::TempFileFaker::with_bucket(bucket.clone())
+            .len((399 * 1024)..(400 * 1024))
+            .kind(fs::TempFileKind::Text)
+            .include_content(true)
+            .name(link.clone());
+        let temp_file = faker.fake::<gridfs::TempFile>();
+
+        assert_eq!(temp_file.filename.unwrap(), link);
+
+        let local_download_path = NamedTempFile::new().unwrap().into_temp_path();
+        let ret_oid = bucket
+            .download_to(&link, &local_download_path)
+            .await
+            .unwrap();
+        assert_eq!(temp_file.id, ret_oid);
+
+        let download_doc = tokio::fs::read_to_string(local_download_path)
+            .await
+            .unwrap();
+
+        let expect_content = temp_file.content.unwrap();
+        let downloaded_content = download_doc.into_bytes();
+
+        assert_eq!(expect_content.len(), downloaded_content.len());
+        assert_eq!(expect_content, downloaded_content);
+    }
 }
