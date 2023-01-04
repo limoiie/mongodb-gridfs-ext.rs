@@ -5,6 +5,7 @@ use futures::StreamExt;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
 use mongodb_gridfs::GridFSBucket;
+use tokio::io::AsyncWriteExt;
 
 use crate::bucket::common::GridFSBucketExt;
 use crate::error::Result;
@@ -35,9 +36,11 @@ impl FileSync for GridFSBucket {
         local_path: impl AsRef<Path> + Send + Sync,
     ) -> Result<ObjectId> {
         let oid = self.id(filename).await?;
+        let mut file = tokio::fs::File::create(local_path).await?;
         let mut cursor = self.open_download_stream(oid).await?;
-        let buffer = cursor.next().await.unwrap_or_default();
-        tokio::fs::write(local_path, buffer).await?;
+        while let Some(buffer) = cursor.next().await {
+            file.write_all(&buffer).await?;
+        }
         Ok(oid)
     }
 
@@ -90,11 +93,12 @@ pub(crate) mod tests {
             .clone()
             .bucket(None);
         let oid = bucket.upload_from(&link, temp_file.path).await.unwrap();
-
+        let mut content = Vec::<u8>::new();
         let mut cursor = bucket.open_download_stream(oid).await.unwrap();
-        let buffer: Vec<u8> = cursor.next().await.unwrap_or_default();
-
-        assert_eq!(buffer.as_slice(), temp_file.content.unwrap());
+        while let Some(buffer) = cursor.next().await {
+            content.extend(buffer);
+        }
+        assert_eq!(content, temp_file.content.unwrap());
     }
 
     #[tokio::test]
@@ -114,6 +118,7 @@ pub(crate) mod tests {
         let link: String = FileName().fake();
         let faker = gridfs::TempFileFaker::with_bucket(bucket.clone())
             .kind(fs::TempFileKind::Text)
+            .len(50..100)
             .include_content(true)
             .name(link.clone());
         let temp_file = faker.fake::<gridfs::TempFile>();

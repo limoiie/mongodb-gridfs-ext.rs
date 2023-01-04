@@ -91,9 +91,12 @@ impl GridFSBucketExt for GridFSBucket {
         S: AsRef<str> + Send,
     {
         let id = self.id(filename).await?;
+        let mut bytes = Vec::<u8>::new();
         let mut cursor = self.open_download_stream(id).await?;
-        let buffer = cursor.next().await.unwrap_or_default();
-        Ok(buffer)
+        while let Some(buffer) = cursor.next().await {
+            bytes.extend(buffer);
+        }
+        Ok(bytes)
     }
 
     async fn write_string<S>(&mut self, filename: S, content: &str) -> Result<()>
