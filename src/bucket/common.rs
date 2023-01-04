@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{doc, Document};
 use mongodb_gridfs::options::{GridFSFindOptions, GridFSUploadOptions};
 use mongodb_gridfs::GridFSBucket;
 
@@ -15,18 +15,33 @@ pub trait GridFSBucketExt {
     where
         S: AsRef<str> + Send;
 
+    /// Get doc by `id`.
+    async fn find_one_by_id(&self, id: ObjectId) -> Result<Document>;
+
     /// Get doc filename by `id`.
     async fn filename(&self, id: ObjectId) -> Result<String>;
 
-    /// Read cloud file by `id` as [alloc::String].
+    /// Get doc size by `id`.
+    async fn size(&self, id: ObjectId) -> Result<i64>;
+
+    /// Get doc filename by `id`.
+    async fn md5(&self, id: ObjectId) -> Result<String>;
+
+    /// Read cloud file by `filename` as [alloc::String].
     async fn read_string<S>(&self, filename: S) -> Result<String>
     where
         S: AsRef<str> + Send;
 
-    /// Read cloud file by `id` as [alloc::Vec<u8>].
+    /// Read cloud file by `filename` as [alloc::Vec<u8>].
     async fn read_bytes<S>(&self, filename: S) -> Result<Vec<u8>>
     where
         S: AsRef<str> + Send;
+
+    /// Read cloud file by `id` as [alloc::String].
+    async fn read_string_by_id(&self, id: ObjectId) -> Result<String>;
+
+    /// Read cloud file by `id` as [alloc::Vec<u8>].
+    async fn read_bytes_by_id(&self, id: ObjectId) -> Result<Vec<u8>>;
 
     /// Write [&str] into cloud file by `id`.
     async fn write_string<S>(&mut self, filename: S, content: &str) -> Result<()>
@@ -63,7 +78,7 @@ impl GridFSBucketExt for GridFSBucket {
             .map_err(Into::into)
     }
 
-    async fn filename(&self, id: ObjectId) -> Result<String> {
+    async fn find_one_by_id(&self, id: ObjectId) -> Result<Document> {
         let opt = GridFSFindOptions::default();
         self.find(doc! {"_id": id}, opt)
             .await?
@@ -73,7 +88,27 @@ impl GridFSBucketExt for GridFSBucket {
                 filename: None,
                 id: Some(id),
             })?
+            .map_err(Into::into)
+    }
+
+    async fn filename(&self, id: ObjectId) -> Result<String> {
+        self.find_one_by_id(id)
+            .await
             .map(|doc| doc.get_str("filename").unwrap().to_owned())
+            .map_err(Into::into)
+    }
+
+    async fn size(&self, id: ObjectId) -> Result<i64> {
+        self.find_one_by_id(id)
+            .await
+            .map(|doc| doc.get_i64("length").unwrap())
+            .map_err(Into::into)
+    }
+
+    async fn md5(&self, id: ObjectId) -> Result<String> {
+        self.find_one_by_id(id)
+            .await
+            .map(|doc| doc.get_str("md5").unwrap().to_owned())
             .map_err(Into::into)
     }
 
@@ -91,6 +126,16 @@ impl GridFSBucketExt for GridFSBucket {
         S: AsRef<str> + Send,
     {
         let id = self.id(filename).await?;
+        self.read_bytes_by_id(id).await
+    }
+
+    async fn read_string_by_id(&self, id: ObjectId) -> Result<String> {
+        self.read_bytes_by_id(id)
+            .await
+            .and_then(|bytes| std::io::read_to_string(bytes.as_slice()).map_err(|err| err.into()))
+    }
+
+    async fn read_bytes_by_id(&self, id: ObjectId) -> Result<Vec<u8>> {
         let mut bytes = Vec::<u8>::new();
         let mut cursor = self.open_download_stream(id).await?;
         while let Some(buffer) = cursor.next().await {
@@ -156,6 +201,7 @@ mod tests {
         );
 
         let file = TempFileFaker::with_bucket(bucket.clone())
+            .len(200..400)
             .name(filename.into())
             .fake::<TempFile>();
 
@@ -184,6 +230,7 @@ mod tests {
         );
 
         let file = TempFileFaker::with_bucket(bucket.clone())
+            .len(200..400)
             .name(filename.into())
             .include_content(true)
             .fake::<TempFile>();
@@ -212,6 +259,7 @@ mod tests {
         );
 
         let file = TempFileFaker::with_bucket(bucket.clone())
+            .len(200..400)
             .name(filename.into())
             .include_content(true)
             .fake::<TempFile>();
@@ -240,6 +288,7 @@ mod tests {
         );
 
         let _file = TempFileFaker::with_bucket(bucket.clone())
+            .len(200..400)
             .name(filename.into())
             .fake::<TempFile>();
 
