@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
+use mongodb_gridfs::options::GridFSUploadOptions;
 use mongodb_gridfs::GridFSBucket;
 use tokio::io::AsyncWriteExt;
 
@@ -25,6 +26,7 @@ pub trait FileSync {
         &mut self,
         filename: &str,
         local_path: impl AsRef<Path> + Send,
+        options: Option<GridFSUploadOptions>,
     ) -> Result<ObjectId>;
 }
 
@@ -48,10 +50,13 @@ impl FileSync for GridFSBucket {
         &mut self,
         filename: &str,
         local_path: impl AsRef<Path> + Send,
+        options: Option<GridFSUploadOptions>,
     ) -> Result<ObjectId> {
         let file = tokio::fs::File::open(local_path).await?.into_std().await;
         let async_file = futures::io::AllowStdIo::new(file);
-        let oid = self.upload_from_stream(filename, async_file, None).await?;
+        let oid = self
+            .upload_from_stream(filename, async_file, options)
+            .await?;
         Ok(oid)
     }
 }
@@ -92,7 +97,10 @@ pub(crate) mod tests {
             .database("testdb")
             .clone()
             .bucket(None);
-        let oid = bucket.upload_from(&link, temp_file.path).await.unwrap();
+        let oid = bucket
+            .upload_from(&link, temp_file.path, None)
+            .await
+            .unwrap();
         let mut content = Vec::<u8>::new();
         let mut cursor = bucket.open_download_stream(oid).await.unwrap();
         while let Some(buffer) = cursor.next().await {
