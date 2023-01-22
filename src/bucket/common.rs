@@ -27,6 +27,9 @@ pub trait GridFSBucketExt {
     /// Get doc filename by `id`.
     async fn md5(&self, id: ObjectId) -> Result<String>;
 
+    /// Get doc content type by id.
+    async fn content_type(&self, id: ObjectId) -> Result<String>;
+
     /// Read cloud file by `filename` as [alloc::String].
     async fn read_string<S>(&self, filename: S) -> Result<String>
     where
@@ -109,6 +112,13 @@ impl GridFSBucketExt for GridFSBucket {
         self.find_one_by_id(id)
             .await
             .map(|doc| doc.get_str("md5").unwrap().to_owned())
+            .map_err(Into::into)
+    }
+
+    async fn content_type(&self, id: ObjectId) -> Result<String> {
+        self.find_one_by_id(id)
+            .await
+            .map(|doc| doc.get_str("content_type").unwrap().to_owned())
             .map_err(Into::into)
     }
 
