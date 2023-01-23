@@ -28,7 +28,10 @@ pub trait GridFSBucketExt {
     async fn md5(&self, id: ObjectId) -> Result<String>;
 
     /// Get doc content type by id.
-    async fn content_type(&self, id: ObjectId) -> Result<String>;
+    async fn content_type(&self, id: ObjectId) -> Result<Option<String>>;
+
+    /// Get sub [Document] metadata by id.
+    async fn metadata(&self, id: ObjectId) -> Result<Option<Document>>;
 
     /// Read cloud file by `filename` as [alloc::String].
     async fn read_string<S>(&self, filename: S) -> Result<String>
@@ -115,11 +118,19 @@ impl GridFSBucketExt for GridFSBucket {
             .map_err(Into::into)
     }
 
-    async fn content_type(&self, id: ObjectId) -> Result<String> {
+    async fn content_type(&self, id: ObjectId) -> Result<Option<String>> {
         self.find_one_by_id(id)
             .await
-            .map(|doc| doc.get_str("content_type").unwrap().to_owned())
+            .map(|doc| doc.get_str("content_type").ok().map(Into::into))
             .map_err(Into::into)
+    }
+
+    async fn metadata(&self, id: ObjectId) -> Result<Option<Document>> {
+        let doc = self.find_one_by_id(id).await?;
+        match doc.get_document("metadata") {
+            Ok(metadata) => Ok(Some(metadata.to_owned())),
+            Err(_) => Ok(None),
+        }
     }
 
     async fn read_string<S>(&self, filename: S) -> Result<String>
