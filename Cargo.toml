@@ -9,7 +9,7 @@ edition = "2021"
 async-trait = "0.1.57"
 futures = "0.3.24"
 mongodb = { version = "2.3.1", features = ["tokio-sync"] }
-mongodb-gridfs = "0.2.2"
+mongodb-gridfs = "0.2.3"
 tokio = { version = "1.2.1", features = ["full"] }
 
 [dev-dependencies]

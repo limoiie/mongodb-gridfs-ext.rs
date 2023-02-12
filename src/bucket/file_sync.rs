@@ -52,10 +52,9 @@ impl FileSync for GridFSBucket {
         local_path: impl AsRef<Path> + Send,
         options: Option<GridFSUploadOptions>,
     ) -> Result<ObjectId> {
-        let file = tokio::fs::File::open(local_path).await?.into_std().await;
-        let async_file = futures::io::AllowStdIo::new(file);
+        let file = tokio::fs::File::open(local_path).await?;
         let oid = self
-            .upload_from_stream(filename, async_file, options)
+            .upload_from_stream(filename, file, options)
             .await?;
         Ok(oid)
     }
