@@ -9,11 +9,11 @@ edition = "2021"
 async-trait = "0.1.57"
 futures = "0.3.24"
 mongodb = { version = "2.3.1", features = ["tokio-sync"] }
-mongodb-gridfs = "0.2.3"
+mongodb-gridfs = { git = "https://github.com/limoiie/mongodb-gridfs-rs", tag = "v0.2.3-patched" }
 tokio = { version = "1.2.1", features = ["full"] }
 
 [dev-dependencies]
-chain_ext = { git = "https://github.com/limoiie/chain-ext.rs", tag = "v0.1.0" }
+chain_ext = { git = "https://github.com/limoiie/chain-ext.rs", tag = "v0.2.2" }
 fake = "2.5.0"
 tempfile = "3.3.0"
-test-utilities = { git = "https://github.com/limoiie/test-utilities.rs", tag = "v0.1.2" }
+test-utilities = { git = "https://github.com/limoiie/test-utilities.rs", tag = "v0.1.3" }
