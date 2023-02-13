@@ -21,6 +21,13 @@ pub trait FileSync {
         local_path: impl AsRef<Path> + Send + Sync,
     ) -> Result<ObjectId>;
 
+    /// Download file by `id` from the cloud to `local_path`.
+    async fn download_to_by_id(
+        &self,
+        id: ObjectId,
+        local_path: impl AsRef<Path> + Send + Sync,
+    ) -> Result<ObjectId>;
+
     /// Upload file at `local_path` to the cloud with `filename`.
     async fn upload_from(
         &mut self,
@@ -37,13 +44,21 @@ impl FileSync for GridFSBucket {
         filename: &str,
         local_path: impl AsRef<Path> + Send + Sync,
     ) -> Result<ObjectId> {
-        let oid = self.id(filename).await?;
+        let id = self.id(filename).await?;
+        self.download_to_by_id(id, local_path).await
+    }
+
+    async fn download_to_by_id(
+        &self,
+        id: ObjectId,
+        local_path: impl AsRef<Path> + Send + Sync,
+    ) -> Result<ObjectId> {
         let mut file = tokio::fs::File::create(local_path).await?;
-        let mut cursor = self.open_download_stream(oid).await?;
+        let mut cursor = self.open_download_stream(id).await?;
         while let Some(buffer) = cursor.next().await {
             file.write_all(&buffer).await?;
         }
-        Ok(oid)
+        Ok(id)
     }
 
     async fn upload_from(
@@ -53,10 +68,8 @@ impl FileSync for GridFSBucket {
         options: Option<GridFSUploadOptions>,
     ) -> Result<ObjectId> {
         let file = tokio::fs::File::open(local_path).await?;
-        let oid = self
-            .upload_from_stream(filename, file, options)
-            .await?;
-        Ok(oid)
+        let id = self.upload_from_stream(filename, file, options).await?;
+        Ok(id)
     }
 }
 
